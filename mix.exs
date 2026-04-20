@@ -17,6 +17,16 @@ defmodule Duckdbex.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_targets: ["all"],
       make_clean: ["clean"],
+      # elixir_make specific config
+      make_precompiler: {:nif, CCPrecompiler},
+      make_precompiler_url:
+        "https://github.com/AlexR2D2/duckdbex/releases/download/v#{@version}/@{artefact_filename}",
+      make_precompiler_filename: "duckdb_nif",
+      make_precompiler_nif_versions: [
+        versions: &nif_versions/1,
+        fallback_version: &fallback_nif_versions/1
+      ],
+      cc_precompiler: cc_precompiler(),
       # Docs
       name: "Duckdbex",
       source_url: "https://github.com/AlexR2D2/duckdbex/",
@@ -37,9 +47,18 @@ defmodule Duckdbex.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.8", runtime: false},
+      {:cc_precompiler, "~> 0.1", runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
+  end
+
+  defp nif_versions(_opts) do
+    ["2.16", "2.17"]
+  end
+
+  defp fallback_nif_versions(opts) do
+    hd(nif_versions(opts))
   end
 
   defp package do
@@ -60,6 +79,23 @@ defmodule Duckdbex.MixProject do
       links: %{
         "GitHub" => "https://github.com/AlexR2D2/duckdbex",
         "Changelog" => "https://github.com/AlexR2D2/duckdbex/blob/main/CHANGELOG.md"
+      }
+    ]
+  end
+
+  defp cc_precompiler do
+    [
+      cleanup: "clean",
+      compilers: %{
+        {:unix, :linux} => %{
+          :include_default_ones => true,
+          "x86_64-linux-gnu" => "x86_64-linux-gnu-",
+          "aarch64-linux-gnu" => "aarch64-linux-gnu-",
+          "riscv64-linux-gnu" => "riscv64-linux-gnu-"
+        },
+        {:unix, :darwin} => %{
+          :include_default_ones => true
+        }
       }
     ]
   end
