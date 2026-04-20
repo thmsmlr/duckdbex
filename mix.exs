@@ -1,7 +1,7 @@
 defmodule Duckdbex.MixProject do
   use Mix.Project
 
-  @version "0.4.0"
+  @version "0.5.0-thmsmlr"
   @duckdb_version "1.5.1"
 
   def project do
@@ -20,7 +20,7 @@ defmodule Duckdbex.MixProject do
       # elixir_make specific config
       make_precompiler: {:nif, CCPrecompiler},
       make_precompiler_url:
-        "https://github.com/AlexR2D2/duckdbex/releases/download/v#{@version}/@{artefact_filename}",
+        "https://github.com/thmsmlr/duckdbex/releases/download/v#{@version}/@{artefact_filename}",
       make_precompiler_filename: "duckdb_nif",
       make_precompiler_nif_versions: [
         versions: &nif_versions/1,
