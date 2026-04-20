@@ -1,5 +1,7 @@
 #include "term.h"
 #include <cassert>
+#include <cstdint>
+#include <cstdint>
 #include <cstring>
 #include <erl_nif.h>
 #include <vector>
