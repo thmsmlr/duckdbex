@@ -1053,6 +1053,41 @@ bool nif::term_to_value(ErlNifEnv* env, ERL_NIF_TERM term, const duckdb::Logical
     case duckdb::LogicalTypeId::UNION:
       return term_to_union(env, term, value_type, sink);
 
+    case duckdb::LogicalTypeId::VARIANT: {
+      // Accept an Elixir binary (JSON text) for VARIANT parameters. We can't
+      // build a VARIANT Value directly from a JSON string through the public
+      // `Value::VARIANT(vector<Value>)` constructor — it expects the shredded
+      // internal representation (keys/children/values/data). Instead, build a
+      // JSON-aliased VARCHAR Value and let DuckDB's cast layer convert it to
+      // VARIANT at bind time, which the json extension registers.
+      ErlNifBinary bin;
+      if (!enif_inspect_binary(env, term, &bin))
+        return false;
+
+      auto json_val = duckdb::Value(std::string((const char*)bin.data, bin.size));
+      // Re-tag the Value as JSON (alias on VARCHAR) so DuckDB's cast
+      // infrastructure picks up the JSON→VARIANT cast path.
+      sink = std::move(json_val);
+      sink.GetTypeMutable().SetAlias(duckdb::LogicalType::JSON_TYPE_NAME);
+      return true;
+    }
+
+    // DuckDB's type inference fails to propagate a concrete LogicalType through
+    // certain destinations (notably VARIANT-column INSERTs, whether the SQL is
+    // a bare `?` or wrapped like `CAST(?::JSON AS VARIANT)`). In those cases
+    // GetExpectedParameterTypes() returns INVALID for the slot. Rather than
+    // refuse to bind, accept an Elixir binary as JSON-aliased VARCHAR so the
+    // execution-time cast (VARCHAR/JSON → VARIANT, registered by the json
+    // extension) can finish the job.
+    case duckdb::LogicalTypeId::INVALID: {
+      ErlNifBinary bin;
+      if (!enif_inspect_binary(env, term, &bin))
+        return false;
+      sink = duckdb::Value(std::string((const char*)bin.data, bin.size));
+      sink.GetTypeMutable().SetAlias(duckdb::LogicalType::JSON_TYPE_NAME);
+      return true;
+    }
+
     default:
       return false;
   };
